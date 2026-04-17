@@ -4,6 +4,10 @@
 
 `tls-ca-fetch` connects to a hostname over TLS, walks the certificate chain the server presents, and writes the CA certificate(s) to a PEM file. It can also chase the AIA extension to fetch the root CA directly from the issuer's URL. Zero dependencies, single static binary.
 
+![tls-ca-fetch demo](docs/demo.svg)
+
+![Certificate chain diagram](docs/chain.svg)
+
 ---
 
 ## Install

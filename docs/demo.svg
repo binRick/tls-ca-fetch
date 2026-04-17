@@ -1,0 +1,82 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="760" height="460" viewBox="0 0 760 460">
+  <defs>
+    <linearGradient id="winbg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#161b22"/>
+      <stop offset="100%" stop-color="#0d1117"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Window shadow -->
+  <rect x="4" y="6" width="752" height="450" rx="12" fill="rgba(0,0,0,0.5)"/>
+
+  <!-- Window background -->
+  <rect width="752" height="450" rx="12" fill="#0d1117" stroke="#30363d" stroke-width="1"/>
+
+  <!-- Title bar -->
+  <rect width="752" height="36" rx="12" fill="url(#winbg)"/>
+  <rect y="24" width="752" height="12" fill="#161b22"/>
+  <line x1="0" y1="36" x2="752" y2="36" stroke="#21262d" stroke-width="1"/>
+
+  <!-- Traffic lights -->
+  <circle cx="20" cy="18" r="6" fill="#ff5f57"/>
+  <circle cx="40" cy="18" r="6" fill="#febc2e"/>
+  <circle cx="60" cy="18" r="6" fill="#28c840"/>
+
+  <!-- Window title -->
+  <text x="376" y="23" text-anchor="middle" font-family="'SF Mono','Fira Code','Courier New',monospace" font-size="12" fill="#484f58">tls-ca-fetch — bash</text>
+
+  <!-- ── Terminal content ── -->
+
+  <!-- L1: prompt + command -->
+  <text xml:space="preserve" x="20" y="65" font-family="'Courier New',Consolas,'Lucida Console',monospace" font-size="13"><tspan fill="#a78bfa">$</tspan><tspan fill="#e2e8f0"> tls-ca-fetch </tspan><tspan fill="#4fc3f7">ximg.app</tspan></text>
+
+  <!-- L2: connecting -->
+  <text xml:space="preserve" x="20" y="86" font-family="'Courier New',Consolas,'Lucida Console',monospace" font-size="13"><tspan fill="#fbbf24">→</tspan><tspan fill="#6e7681"> Connecting to </tspan><tspan fill="#4fc3f7">ximg.app:443</tspan><tspan fill="#6e7681"> …</tspan></text>
+
+  <!-- L3: empty -->
+
+  <!-- L4: chain received -->
+  <text xml:space="preserve" x="20" y="128" font-family="'Courier New',Consolas,'Lucida Console',monospace" font-size="13" fill="#e2e8f0"><tspan>Chain received: </tspan><tspan fill="#fbbf24">2</tspan><tspan> certificate(s)</tspan></text>
+
+  <!-- L5: separator -->
+  <text x="20" y="149" font-family="'Courier New',Consolas,'Lucida Console',monospace" font-size="13" fill="#21262d">──────────────────────────────────────────────────────────────────────</text>
+
+  <!-- L6: cert [0] leaf -->
+  <text xml:space="preserve" x="20" y="170" font-family="'Courier New',Consolas,'Lucida Console',monospace" font-size="13"><tspan fill="#6e7681">  </tspan><tspan fill="#fbbf24">[0]</tspan><tspan fill="#6e7681"> </tspan><tspan fill="#f87171">leaf            </tspan><tspan fill="#6e7681"> CN=</tspan><tspan fill="#4fc3f7">ximg.app</tspan><tspan fill="#6e7681">                                 IsCA=</tspan><tspan fill="#f87171">false</tspan></text>
+
+  <!-- L7: issuer -->
+  <text xml:space="preserve" x="20" y="191" font-family="'Courier New',Consolas,'Lucida Console',monospace" font-size="13"><tspan fill="#6e7681">       Issuer : </tspan><tspan fill="#c9d1d9">E7</tspan></text>
+
+  <!-- L8: expires -->
+  <text xml:space="preserve" x="20" y="212" font-family="'Courier New',Consolas,'Lucida Console',monospace" font-size="13"><tspan fill="#6e7681">       Expires: </tspan><tspan fill="#fbbf24">2026-07-05</tspan></text>
+
+  <!-- L9: AIA -->
+  <text xml:space="preserve" x="20" y="233" font-family="'Courier New',Consolas,'Lucida Console',monospace" font-size="13"><tspan fill="#6e7681">       AIA    : </tspan><tspan fill="#4fc3f7">http://e7.i.lencr.org/</tspan></text>
+
+  <!-- L10: empty -->
+
+  <!-- L11: cert [1] intermediate CA -->
+  <text xml:space="preserve" x="20" y="275" font-family="'Courier New',Consolas,'Lucida Console',monospace" font-size="13"><tspan fill="#6e7681">  </tspan><tspan fill="#fbbf24">[1]</tspan><tspan fill="#6e7681"> </tspan><tspan fill="#a78bfa">intermediate CA </tspan><tspan fill="#6e7681"> CN=</tspan><tspan fill="#c9d1d9">E7</tspan><tspan fill="#6e7681">                                       IsCA=</tspan><tspan fill="#4ade80">true</tspan></text>
+
+  <!-- L12: issuer -->
+  <text xml:space="preserve" x="20" y="296" font-family="'Courier New',Consolas,'Lucida Console',monospace" font-size="13"><tspan fill="#6e7681">       Issuer : </tspan><tspan fill="#c9d1d9">ISRG Root X1</tspan></text>
+
+  <!-- L13: expires -->
+  <text xml:space="preserve" x="20" y="317" font-family="'Courier New',Consolas,'Lucida Console',monospace" font-size="13"><tspan fill="#6e7681">       Expires: </tspan><tspan fill="#fbbf24">2027-03-12</tspan></text>
+
+  <!-- L14: AIA -->
+  <text xml:space="preserve" x="20" y="338" font-family="'Courier New',Consolas,'Lucida Console',monospace" font-size="13"><tspan fill="#6e7681">       AIA    : </tspan><tspan fill="#4fc3f7">http://x1.i.lencr.org/</tspan></text>
+
+  <!-- L15: empty -->
+
+  <!-- L16: separator -->
+  <text x="20" y="380" font-family="'Courier New',Consolas,'Lucida Console',monospace" font-size="13" fill="#21262d">──────────────────────────────────────────────────────────────────────</text>
+
+  <!-- L17: empty -->
+
+  <!-- L18: saved -->
+  <text xml:space="preserve" x="20" y="422" font-family="'Courier New',Consolas,'Lucida Console',monospace" font-size="13" fill="#e2e8f0"><tspan fill="#4ade80">✓</tspan><tspan> Saved </tspan><tspan fill="#fbbf24">1</tspan><tspan> CA certificate(s) → </tspan><tspan fill="#4fc3f7">ximg.app-ca.pem</tspan></text>
+
+  <!-- L19: verified -->
+  <text xml:space="preserve" x="20" y="443" font-family="'Courier New',Consolas,'Lucida Console',monospace" font-size="13" fill="#6e7681"><tspan>  Verified: </tspan><tspan fill="#fbbf24">1</tspan><tspan> PEM block(s) readable in output file</tspan></text>
+</svg>
