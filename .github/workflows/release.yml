@@ -1,0 +1,183 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: Build & Release
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Build binaries
+        run: |
+          mkdir -p dist
+          targets=(
+            "linux/amd64"
+            "linux/arm64"
+            "darwin/amd64"
+            "darwin/arm64"
+            "windows/amd64"
+          )
+          for target in "${targets[@]}"; do
+            GOOS="${target%/*}"
+            GOARCH="${target#*/}"
+            BINARY="tls-ca-fetch"
+            [ "$GOOS" = "windows" ] && BINARY="tls-ca-fetch.exe"
+            OUT="dist/tls-ca-fetch-${GOOS}-${GOARCH}"
+            [ "$GOOS" = "windows" ] && OUT="${OUT}.exe"
+            CGO_ENABLED=0 GOOS=$GOOS GOARCH=$GOARCH go build \
+              -trimpath \
+              -ldflags="-s -w -extldflags=-static" \
+              -o "$BINARY" .
+            # Package darwin builds as tarballs for Homebrew
+            if [ "$GOOS" = "darwin" ]; then
+              tar -czf "dist/tls-ca-fetch-${GOOS}-${GOARCH}.tar.gz" "$BINARY"
+            fi
+            mv "$BINARY" "$OUT" 2>/dev/null || true
+            echo "Built: $OUT ($(du -sh "$OUT" | cut -f1))"
+          done
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          generate_release_notes: true
+
+  rpm:
+    name: RHEL9 RPM
+    needs: build
+    runs-on: ubuntu-latest
+    container:
+      image: almalinux:9
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: dnf install -y golang rpm-build rpmdevtools
+
+      - name: Build binary
+        run: |
+          CGO_ENABLED=0 go build \
+            -trimpath \
+            -ldflags="-s -w -extldflags=-static" \
+            -o tls-ca-fetch .
+
+      - name: Build RPM
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          rpmdev-setuptree
+          cp tls-ca-fetch ~/rpmbuild/BUILD/
+
+          cat > ~/rpmbuild/SPECS/tls-ca-fetch.spec <<SPEC
+          Name:           tls-ca-fetch
+          Version:        ${VERSION}
+          Release:        1%{?dist}
+          Summary:        Fetch and inspect TLS certificate authority chains
+          License:        MIT
+          BuildArch:      x86_64
+
+          %description
+          tls-ca-fetch connects to a host and retrieves the full TLS certificate
+          authority chain, outputting PEM certificates and chain metadata.
+
+          %install
+          install -Dm755 %{_builddir}/tls-ca-fetch %{buildroot}/usr/local/bin/tls-ca-fetch
+
+          %files
+          /usr/local/bin/tls-ca-fetch
+
+          %changelog
+          * $(date "+%a %b %d %Y") GitHub Actions <actions@github.com> - ${VERSION}-1
+          - Release ${VERSION}
+          SPEC
+
+          rpmbuild -bb ~/rpmbuild/SPECS/tls-ca-fetch.spec
+          find ~/rpmbuild/RPMS -name '*.rpm' -exec cp {} . \;
+          ls -lh *.rpm
+
+      - name: Upload RPM to release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: "*.rpm"
+
+  homebrew:
+    name: Update Homebrew Tap
+    needs: build
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download darwin tarballs from release
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          for ARCH in amd64 arm64; do
+            curl -fsSL \
+              "https://github.com/binRick/tls-ca-fetch/releases/download/${TAG}/tls-ca-fetch-darwin-${ARCH}.tar.gz" \
+              -o "tls-ca-fetch-darwin-${ARCH}.tar.gz"
+          done
+
+      - name: Compute SHA256s
+        run: |
+          echo "SHA256_AMD64=$(sha256sum tls-ca-fetch-darwin-amd64.tar.gz | cut -d' ' -f1)" >> "$GITHUB_ENV"
+          echo "SHA256_ARM64=$(sha256sum tls-ca-fetch-darwin-arm64.tar.gz | cut -d' ' -f1)" >> "$GITHUB_ENV"
+
+      - name: Checkout homebrew-tap
+        uses: actions/checkout@v4
+        with:
+          repository: binRick/homebrew-tap
+          token: ${{ secrets.HOMEBREW_TAP_TOKEN }}
+          path: tap
+
+      - name: Write formula
+        run: |
+          VERSION="${GITHUB_REF_NAME#v}"
+          TAG="${GITHUB_REF_NAME}"
+          mkdir -p tap/Formula
+          cat > tap/Formula/tls-ca-fetch.rb <<RUBY
+          class TlsCaFetch < Formula
+            desc "Fetch and inspect TLS certificate authority chains"
+            homepage "https://github.com/binRick/tls-ca-fetch"
+            version "${VERSION}"
+            license "MIT"
+
+            on_macos do
+              on_arm do
+                url "https://github.com/binRick/tls-ca-fetch/releases/download/${TAG}/tls-ca-fetch-darwin-arm64.tar.gz"
+                sha256 "${SHA256_ARM64}"
+              end
+              on_intel do
+                url "https://github.com/binRick/tls-ca-fetch/releases/download/${TAG}/tls-ca-fetch-darwin-amd64.tar.gz"
+                sha256 "${SHA256_AMD64}"
+              end
+            end
+
+            def install
+              bin.install "tls-ca-fetch"
+            end
+
+            test do
+              system "#{bin}/tls-ca-fetch", "--help"
+            end
+          end
+          RUBY
+
+      - name: Commit and push formula
+        run: |
+          cd tap
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add Formula/tls-ca-fetch.rb
+          git diff --cached --quiet || git commit -m "tls-ca-fetch: update to ${GITHUB_REF_NAME}"
+          git push
