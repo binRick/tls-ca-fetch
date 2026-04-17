@@ -1,6 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+GO="${GO:-}"
+if [ -z "${GO}" ]; then
+  if command -v go &>/dev/null; then
+    GO="go"
+  elif [ -x /usr/local/go/bin/go ]; then
+    GO="/usr/local/go/bin/go"
+  else
+    echo "error: go not found. Install Go from https://go.dev/dl/ or set GO=/path/to/go" >&2
+    exit 1
+  fi
+fi
+
 VERSION="${VERSION:-v1.0.0}"
 BIN="tls-ca-fetch"
 OUT="releases/${VERSION}"
@@ -13,7 +25,7 @@ build() {
   local target="${OUT}/${BIN}-${goos}-${goarch}${suffix}"
   echo "  building ${target} ..."
   CGO_ENABLED=0 GOOS="${goos}" GOARCH="${goarch}" \
-    go build -ldflags="${LDFLAGS}" -trimpath -o "${target}" .
+    "${GO}" build -ldflags="${LDFLAGS}" -trimpath -o "${target}" .
 }
 
 echo "tls-ca-fetch build — ${VERSION}"
