@@ -1,0 +1,558 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="OpenSSL commands to manually fetch, inspect, and extract CA certificates from TLS servers.">
+<title>OpenSSL Commands · CA Certificate Fetcher</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>">
+<style>
+  :root {
+    --bg: #0a0d14;
+    --surface: #111827;
+    --surface2: #1a2235;
+    --border: #1f2937;
+    --accent: #10b981;
+    --accent2: #6366f1;
+    --red: #f87171;
+    --yellow: #fbbf24;
+    --text: #f1f5f9;
+    --muted: #6b7280;
+    --code-bg: #060910;
+    --font-mono: 'Fira Code', 'Cascadia Code', 'Courier New', monospace;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+    min-height: 100vh;
+    padding-top: 48px;
+  }
+
+  #subnav {
+    position: sticky;
+    top: 52px;
+    z-index: 150;
+    background: rgba(10,13,20,.97);
+    backdrop-filter: blur(12px);
+    border-bottom: 1px solid rgba(255,255,255,.07);
+    display: flex;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: .2rem;
+    padding: .4rem 1rem;
+  }
+  #subnav a {
+    font-size: .72rem;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: #4b5563;
+    padding: .3rem .65rem;
+    border-radius: 3px;
+    text-decoration: none;
+    transition: color .2s, background .2s;
+    font-family: 'Courier New', monospace;
+  }
+  #subnav a:hover, #subnav a.active {
+    color: var(--accent);
+    background: rgba(255,255,255,.06);
+  }
+
+  .page-header {
+    max-width: 860px;
+    margin: 48px auto 0;
+    padding: 0 24px;
+  }
+  .page-label {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    color: var(--accent);
+    margin-bottom: 8px;
+  }
+  .page-title {
+    font-size: clamp(24px, 4vw, 38px);
+    font-weight: 800;
+    color: var(--text);
+    margin-bottom: 12px;
+  }
+  .page-subtitle {
+    font-size: 16px;
+    color: var(--muted);
+    max-width: 600px;
+  }
+
+  .content {
+    max-width: 860px;
+    margin: 40px auto 80px;
+    padding: 0 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 48px;
+  }
+
+  .section-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 16px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  .section-title::after {
+    content: '';
+    flex: 1;
+    height: 1px;
+    background: var(--border);
+  }
+
+  /* Code blocks */
+  .cmd-block {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    overflow: hidden;
+    margin-top: 12px;
+  }
+  .cmd-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 8px 14px;
+    background: rgba(255,255,255,.03);
+    border-bottom: 1px solid var(--border);
+    font-size: 11px;
+    font-family: var(--font-mono);
+    color: var(--muted);
+    letter-spacing: .08em;
+  }
+  .cmd-copy {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--muted);
+    font-family: var(--font-mono);
+    font-size: 10px;
+    padding: 2px 8px;
+    cursor: pointer;
+    transition: color .2s, border-color .2s;
+  }
+  .cmd-copy:hover { color: var(--accent); border-color: var(--accent); }
+  .cmd-copy.copied { color: var(--accent); }
+  pre {
+    padding: 18px;
+    overflow-x: auto;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 1.7;
+    color: #94a3b8;
+  }
+  .c  { color: #4b5563; }        /* comment — grey */
+  .kw { color: var(--accent); }   /* keyword / command */
+  .fl { color: #fbbf24; }         /* flag */
+  .st { color: #a78bfa; }         /* string / value */
+  .op { color: #f87171; }         /* operator / pipe */
+  .hl { color: #f1f5f9; }         /* highlighted */
+
+  /* Description text */
+  .desc {
+    color: var(--muted);
+    font-size: 14px;
+    line-height: 1.7;
+    margin-bottom: 4px;
+  }
+  .desc strong { color: var(--text); }
+  .desc code {
+    font-family: var(--font-mono);
+    font-size: 12px;
+    background: rgba(255,255,255,.06);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 1px 6px;
+    color: #a78bfa;
+  }
+
+  /* Comparison table */
+  .cmp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+    margin-top: 12px;
+  }
+  .cmp-table th {
+    background: var(--surface2);
+    color: var(--accent);
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+    padding: 10px 14px;
+    text-align: left;
+    border: 1px solid var(--border);
+  }
+  .cmp-table td {
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    color: #cbd5e1;
+    vertical-align: top;
+    font-family: var(--font-mono);
+    font-size: 12px;
+  }
+  .cmp-table tr:nth-child(even) td { background: rgba(255,255,255,.02); }
+  .cmp-table td.label { font-family: system-ui; font-size: 13px; color: var(--text); font-weight: 500; }
+  .badge-good { display: inline-block; background: rgba(16,185,129,.1); border: 1px solid rgba(16,185,129,.3); color: #10b981; font-size: 11px; padding: 1px 7px; border-radius: 4px; font-family: system-ui; font-weight: 600; }
+  .badge-meh  { display: inline-block; background: rgba(251,191,36,.1);  border: 1px solid rgba(251,191,36,.3);  color: #fbbf24; font-size: 11px; padding: 1px 7px; border-radius: 4px; font-family: system-ui; font-weight: 600; }
+
+  /* Warning box */
+  .note {
+    background: rgba(251,191,36,.06);
+    border: 1px solid rgba(251,191,36,.25);
+    border-left: 3px solid #fbbf24;
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 13px;
+    color: #fde68a;
+    margin-top: 12px;
+  }
+  .note strong { color: #fbbf24; }
+
+  .tip {
+    background: rgba(16,185,129,.05);
+    border: 1px solid rgba(16,185,129,.2);
+    border-left: 3px solid var(--accent);
+    border-radius: 8px;
+    padding: 14px 18px;
+    font-size: 13px;
+    color: #a7f3d0;
+    margin-top: 12px;
+  }
+  .tip strong { color: var(--accent); }
+
+  /* footer */
+  .footer {
+    text-align: center;
+    padding: 36px 24px;
+    border-top: 1px solid var(--border);
+    color: var(--muted);
+    font-size: 13px;
+  }
+
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<nav id="subnav">
+  <a href="index.html">Overview</a>
+  <a href="how-it-works.html">How It Works</a>
+  <a href="download.html">Download</a>
+  <a href="run.html">Run</a>
+  <a href="openssl.html">OpenSSL</a>
+</nav>
+<script>
+  document.querySelectorAll('#subnav a').forEach(function(a){
+    var href=a.getAttribute('href'), path=location.pathname;
+    if(path.endsWith(href)||(href==='index.html'&&(path.endsWith('/')||path.endsWith('/ca-fetcher')||path.endsWith('index.html')))){a.classList.add('active');}
+  });
+</script>
+
+<div class="page-header">
+  <div class="page-label">Manual Method</div>
+  <h1 class="page-title">Doing It with OpenSSL</h1>
+  <p class="page-subtitle">Everything <code>tls-ca-fetch</code> does, but with raw <code>openssl</code> commands. Useful when you can't install a binary, need to script something specific, or just want to understand what's happening under the hood.</p>
+</div>
+
+<div class="content">
+
+  <!-- ── 1. View the chain ─────────────────────────────────────────────── -->
+  <div>
+    <div class="section-title">1 · View the Full Certificate Chain</div>
+    <p class="desc">The <code>-showcerts</code> flag makes <code>s_client</code> print every certificate the server sends — not just the leaf. Pipe through <code>openssl x509</code> to decode human-readable fields.</p>
+
+    <div class="cmd-block">
+      <div class="cmd-header"><span>BASH</span><button class="cmd-copy" onclick="copyCmd(this)">copy</button></div>
+      <pre><span class="c"># Dump every cert the server sends, plus handshake info</span>
+<span class="kw">echo</span> <span class="op">|</span> openssl s_client <span class="fl">-showcerts -connect</span> <span class="st">google.com:443</span> <span class="fl">-servername</span> <span class="st">google.com</span> <span class="st">2&gt;/dev/null</span></pre>
+    </div>
+
+    <div class="cmd-block">
+      <div class="cmd-header"><span>BASH</span><button class="cmd-copy" onclick="copyCmd(this)">copy</button></div>
+      <pre><span class="c"># Just the subject, issuer, and expiry of the leaf cert</span>
+<span class="kw">echo</span> <span class="op">|</span> openssl s_client <span class="fl">-connect</span> <span class="st">google.com:443</span> <span class="st">2&gt;/dev/null</span> <span class="op">\</span>
+  <span class="op">|</span> openssl x509 <span class="fl">-noout -subject -issuer -dates</span></pre>
+    </div>
+
+    <div class="cmd-block">
+      <div class="cmd-header"><span>BASH</span><button class="cmd-copy" onclick="copyCmd(this)">copy</button></div>
+      <pre><span class="c"># Full decoded text of the leaf cert (verbose)</span>
+<span class="kw">echo</span> <span class="op">|</span> openssl s_client <span class="fl">-connect</span> <span class="st">google.com:443</span> <span class="st">2&gt;/dev/null</span> <span class="op">\</span>
+  <span class="op">|</span> openssl x509 <span class="fl">-noout -text</span></pre>
+    </div>
+
+    <div class="note"><strong>Note:</strong> The <code>echo |</code> prefix sends an empty string to close stdin immediately after the handshake, so the command doesn't hang waiting for input.</div>
+  </div>
+
+  <!-- ── 2. Save CA certs ──────────────────────────────────────────────── -->
+  <div>
+    <div class="section-title">2 · Save the CA Certificates to a File</div>
+    <p class="desc">With <code>-showcerts</code>, the output contains all certs separated by <code>-----BEGIN/END CERTIFICATE-----</code> markers. Cert #1 is always the leaf — everything after is CA chain. Use <code>awk</code> to skip the first block.</p>
+
+    <div class="cmd-block">
+      <div class="cmd-header"><span>BASH — skip the leaf cert, save the rest</span><button class="cmd-copy" onclick="copyCmd(this)">copy</button></div>
+      <pre><span class="kw">echo</span> <span class="op">|</span> openssl s_client <span class="fl">-showcerts -connect</span> <span class="st">google.com:443</span> <span class="st">2&gt;/dev/null</span> <span class="op">\</span>
+  <span class="op">|</span> awk <span class="st">'
+    BEGIN { n=0; p=0 }
+    /-----BEGIN CERTIFICATE-----/ { n++; if (n&gt;1) p=1 }
+    p { print }
+    /-----END CERTIFICATE-----/   { p=0 }
+  '</span> <span class="op">&gt;</span> google.com-ca.pem
+
+<span class="c"># Verify it saved correctly</span>
+openssl x509 <span class="fl">-in</span> google.com-ca.pem <span class="fl">-noout -subject -issuer</span></pre>
+    </div>
+
+    <div class="cmd-block">
+      <div class="cmd-header"><span>BASH — split into one file per cert</span><button class="cmd-copy" onclick="copyCmd(this)">copy</button></div>
+      <pre><span class="kw">echo</span> <span class="op">|</span> openssl s_client <span class="fl">-showcerts -connect</span> <span class="st">google.com:443</span> <span class="st">2&gt;/dev/null</span> <span class="op">\</span>
+  <span class="op">|</span> awk <span class="st">'
+    BEGIN { n=0 }
+    /-----BEGIN CERTIFICATE-----/ { n++; file="cert-"n".pem" }
+    { print &gt; file }
+  '</span>
+
+<span class="c"># cert-1.pem = leaf, cert-2.pem = first CA, cert-3.pem = second CA…</span>
+openssl x509 <span class="fl">-in</span> cert-2.pem <span class="fl">-noout -subject -issuer</span></pre>
+    </div>
+
+    <div class="tip"><strong>Tip:</strong> If the server sends only one certificate (misconfigured), the <code>awk</code> filter above will produce an empty file. That's your signal that the server is leaf-only and you need to fetch the CA separately.</div>
+  </div>
+
+  <!-- ── 3. Inspect a saved cert ───────────────────────────────────────── -->
+  <div>
+    <div class="section-title">3 · Inspect a Saved Certificate</div>
+
+    <div class="cmd-block">
+      <div class="cmd-header"><span>BASH</span><button class="cmd-copy" onclick="copyCmd(this)">copy</button></div>
+      <pre><span class="c"># Subject, issuer, validity window</span>
+openssl x509 <span class="fl">-in</span> ca.pem <span class="fl">-noout -subject -issuer -dates</span>
+
+<span class="c"># SHA-256 fingerprint</span>
+openssl x509 <span class="fl">-in</span> ca.pem <span class="fl">-noout -fingerprint -sha256</span>
+
+<span class="c"># Is it a CA cert? (look for CA:TRUE)</span>
+openssl x509 <span class="fl">-in</span> ca.pem <span class="fl">-noout -text</span> <span class="op">|</span> grep <span class="fl">-A2</span> <span class="st">"Basic Constraints"</span>
+
+<span class="c"># Subject Alternative Names (SANs)</span>
+openssl x509 <span class="fl">-in</span> ca.pem <span class="fl">-noout -text</span> <span class="op">|</span> grep <span class="fl">-A1</span> <span class="st">"Subject Alternative"</span>
+
+<span class="c"># Check if cert expires within 30 days (exit 1 if so)</span>
+openssl x509 <span class="fl">-in</span> ca.pem <span class="fl">-checkend</span> <span class="st">2592000</span> <span class="op">||</span> echo <span class="st">"Expires within 30 days!"</span></pre>
+    </div>
+  </div>
+
+  <!-- ── 4. AIA — fetch root CA ────────────────────────────────────────── -->
+  <div>
+    <div class="section-title">4 · Fetch the Root CA via AIA</div>
+    <p class="desc">When a server sends only the leaf cert (or you need the root CA which servers never send), the <strong>AIA (Authority Information Access)</strong> extension in the leaf cert contains a URL pointing to the issuing CA's certificate. It's almost always in DER format, so you need to convert it.</p>
+
+    <div class="cmd-block">
+      <div class="cmd-header"><span>BASH — one-liner: extract AIA URL → download → convert → inspect</span><button class="cmd-copy" onclick="copyCmd(this)">copy</button></div>
+      <pre><span class="c"># Step 1: get the AIA CA Issuers URL from the leaf cert</span>
+AIA_URL=$(<span class="kw">echo</span> <span class="op">|</span> openssl s_client <span class="fl">-connect</span> <span class="st">google.com:443</span> <span class="st">2&gt;/dev/null</span> <span class="op">\</span>
+  <span class="op">|</span> openssl x509 <span class="fl">-noout -text</span> <span class="op">\</span>
+  <span class="op">|</span> grep <span class="st">"CA Issuers"</span> <span class="op">\</span>
+  <span class="op">|</span> grep <span class="fl">-oP</span> <span class="st">'http://[^ ]+'</span>)
+
+echo <span class="st">"AIA URL: $AIA_URL"</span>
+
+<span class="c"># Step 2: download (usually DER format)</span>
+curl <span class="fl">-sL</span> <span class="st">"$AIA_URL"</span> <span class="fl">-o</span> issuer.der
+
+<span class="c"># Step 3: convert DER → PEM</span>
+openssl x509 <span class="fl">-inform DER -in</span> issuer.der <span class="fl">-out</span> issuer.pem
+
+<span class="c"># Step 4: inspect</span>
+openssl x509 <span class="fl">-in</span> issuer.pem <span class="fl">-noout -subject -issuer -dates</span></pre>
+    </div>
+
+    <div class="cmd-block">
+      <div class="cmd-header"><span>BASH — compact version for scripting</span><button class="cmd-copy" onclick="copyCmd(this)">copy</button></div>
+      <pre>HOST=<span class="st">google.com</span>; PORT=<span class="st">443</span>
+curl <span class="fl">-sL</span> $(<span class="kw">echo</span> <span class="op">|</span> openssl s_client <span class="fl">-connect</span> <span class="st">$HOST:$PORT</span> <span class="st">2&gt;/dev/null</span> <span class="op">\</span>
+  <span class="op">|</span> openssl x509 <span class="fl">-noout -text</span> <span class="op">|</span> grep <span class="st">"CA Issuers"</span> <span class="op">|</span> grep <span class="fl">-oP</span> <span class="st">'http://[^ ]+'</span>) <span class="op">\</span>
+  <span class="op">|</span> openssl x509 <span class="fl">-inform DER -out</span> <span class="st">$HOST-root-ca.pem</span></pre>
+    </div>
+  </div>
+
+  <!-- ── 5. Format conversion ──────────────────────────────────────────── -->
+  <div>
+    <div class="section-title">5 · Format Conversion</div>
+    <p class="desc">TLS certificates exist in several formats. PEM is base64 text (the <code>-----BEGIN CERTIFICATE-----</code> format). DER is the raw binary equivalent. PKCS#7 bundles multiple certs. Most tools produce or consume PEM.</p>
+
+    <div class="cmd-block">
+      <div class="cmd-header"><span>BASH</span><button class="cmd-copy" onclick="copyCmd(this)">copy</button></div>
+      <pre><span class="c"># DER → PEM</span>
+openssl x509 <span class="fl">-inform DER -in</span> cert.der <span class="fl">-out</span> cert.pem
+
+<span class="c"># PEM → DER</span>
+openssl x509 <span class="fl">-outform DER -in</span> cert.pem <span class="fl">-out</span> cert.der
+
+<span class="c"># PKCS#7 (.p7b) → PEM (expand all certs in the bundle)</span>
+openssl pkcs7 <span class="fl">-print_certs -in</span> bundle.p7b <span class="fl">-out</span> bundle.pem
+
+<span class="c"># Concatenate multiple PEM certs into one chain file</span>
+cat intermediate.pem root.pem <span class="op">&gt;</span> ca-chain.pem
+
+<span class="c"># Count PEM blocks in a file</span>
+grep <span class="fl">-c</span> <span class="st">"BEGIN CERTIFICATE"</span> ca-chain.pem</pre>
+    </div>
+  </div>
+
+  <!-- ── 6. Verify ────────────────────────────────────────────────────── -->
+  <div>
+    <div class="section-title">6 · Verify a Certificate Against a CA</div>
+    <p class="desc">After you've saved the CA cert, you can verify that a server's leaf cert was actually signed by it. This is the core of TLS trust.</p>
+
+    <div class="cmd-block">
+      <div class="cmd-header"><span>BASH</span><button class="cmd-copy" onclick="copyCmd(this)">copy</button></div>
+      <pre><span class="c"># Save just the leaf cert</span>
+<span class="kw">echo</span> <span class="op">|</span> openssl s_client <span class="fl">-connect</span> <span class="st">google.com:443</span> <span class="st">2&gt;/dev/null</span> <span class="op">\</span>
+  <span class="op">|</span> openssl x509 <span class="op">&gt;</span> leaf.pem
+
+<span class="c"># Verify leaf against your saved CA chain</span>
+openssl verify <span class="fl">-CAfile</span> google.com-ca.pem leaf.pem
+<span class="c"># → leaf.pem: OK</span>
+
+<span class="c"># Verify a live server's cert matches a saved CA (full handshake check)</span>
+openssl s_client <span class="fl">-connect</span> <span class="st">google.com:443</span> <span class="fl">-CAfile</span> google.com-ca.pem <span class="fl">-verify_return_error</span> <span class="st">2&gt;&amp;1</span> <span class="op">\</span>
+  <span class="op">|</span> grep <span class="st">"Verify return"</span>
+<span class="c"># → Verify return code: 0 (ok)</span></pre>
+    </div>
+  </div>
+
+  <!-- ── 7. Non-443 / SNI / client cert ───────────────────────────────── -->
+  <div>
+    <div class="section-title">7 · Useful s_client Flags</div>
+
+    <div class="cmd-block">
+      <div class="cmd-header"><span>BASH</span><button class="cmd-copy" onclick="copyCmd(this)">copy</button></div>
+      <pre><span class="c"># Custom port (e.g. LDAPS, SMTPS, internal service)</span>
+<span class="kw">echo</span> <span class="op">|</span> openssl s_client <span class="fl">-connect</span> <span class="st">internal.corp:8443</span> <span class="fl">-servername</span> <span class="st">internal.corp</span> <span class="st">2&gt;/dev/null</span>
+
+<span class="c"># Skip cert verification (self-signed / private CA)</span>
+<span class="kw">echo</span> <span class="op">|</span> openssl s_client <span class="fl">-connect</span> <span class="st">internal.corp:443</span> <span class="fl">-verify_quiet -noverify</span> <span class="st">2&gt;/dev/null</span>
+
+<span class="c"># Show full chain with -showcerts; -no_ign_eof keeps connection open briefly</span>
+<span class="kw">echo</span> <span class="op">|</span> openssl s_client <span class="fl">-showcerts -connect</span> <span class="st">example.com:443</span>
+
+<span class="c"># Force TLSv1.2 or TLSv1.3</span>
+<span class="kw">echo</span> <span class="op">|</span> openssl s_client <span class="fl">-tls1_2 -connect</span> <span class="st">example.com:443</span> <span class="st">2&gt;/dev/null</span>
+<span class="kw">echo</span> <span class="op">|</span> openssl s_client <span class="fl">-tls1_3 -connect</span> <span class="st">example.com:443</span> <span class="st">2&gt;/dev/null</span>
+
+<span class="c"># Check negotiated cipher suite</span>
+<span class="kw">echo</span> <span class="op">|</span> openssl s_client <span class="fl">-connect</span> <span class="st">example.com:443</span> <span class="st">2&gt;/dev/null</span> <span class="op">|</span> grep <span class="st">"Cipher\|Protocol"</span>
+
+<span class="c"># STARTTLS (SMTP, IMAP, etc.)</span>
+<span class="kw">echo</span> <span class="op">|</span> openssl s_client <span class="fl">-connect</span> <span class="st">mail.example.com:587</span> <span class="fl">-starttls smtp</span> <span class="st">2&gt;/dev/null</span></pre>
+    </div>
+  </div>
+
+  <!-- ── 8. vs tls-ca-fetch ────────────────────────────────────────────── -->
+  <div>
+    <div class="section-title">8 · OpenSSL vs tls-ca-fetch</div>
+
+    <table class="cmp-table">
+      <tr>
+        <th>Task</th>
+        <th>openssl</th>
+        <th>tls-ca-fetch</th>
+      </tr>
+      <tr>
+        <td class="label">View chain</td>
+        <td>openssl s_client -showcerts …</td>
+        <td>tls-ca-fetch hostname</td>
+      </tr>
+      <tr>
+        <td class="label">Save CA cert(s)</td>
+        <td>s_client + awk pipeline</td>
+        <td><span class="badge-good">automatic</span></td>
+      </tr>
+      <tr>
+        <td class="label">Identify leaf vs CA</td>
+        <td>manual grep for CA:TRUE</td>
+        <td><span class="badge-good">automatic</span></td>
+      </tr>
+      <tr>
+        <td class="label">AIA root fetch</td>
+        <td>manual grep + curl + openssl convert</td>
+        <td>-fetch-root flag</td>
+      </tr>
+      <tr>
+        <td class="label">Private / self-signed</td>
+        <td>-noverify flag</td>
+        <td>-insecure flag</td>
+      </tr>
+      <tr>
+        <td class="label">Format conversion</td>
+        <td><span class="badge-good">full control</span></td>
+        <td>PEM only</td>
+      </tr>
+      <tr>
+        <td class="label">Verify cert against CA</td>
+        <td><span class="badge-good">openssl verify</span></td>
+        <td>not supported</td>
+      </tr>
+      <tr>
+        <td class="label">STARTTLS (SMTP/IMAP)</td>
+        <td><span class="badge-good">-starttls flag</span></td>
+        <td>not supported</td>
+      </tr>
+      <tr>
+        <td class="label">Dependencies</td>
+        <td>openssl + awk + curl (usually pre-installed)</td>
+        <td><span class="badge-good">none — single binary</span></td>
+      </tr>
+      <tr>
+        <td class="label">Windows</td>
+        <td><span class="badge-meh">needs WSL or Git Bash</span></td>
+        <td><span class="badge-good">.exe available</span></td>
+      </tr>
+      <tr>
+        <td class="label">Scriptability</td>
+        <td><span class="badge-good">composable with shell tools</span></td>
+        <td>structured output</td>
+      </tr>
+    </table>
+
+    <div class="tip" style="margin-top:16px"><strong>Bottom line:</strong> Use <strong>openssl</strong> when you need full control, format conversion, or STARTTLS. Use <strong>tls-ca-fetch</strong> when you just want the CA cert file in one command with no pipeline gymnastics — especially on Windows or in environments where shell pipelines are awkward.</div>
+  </div>
+
+</div>
+
+<div class="footer">
+  <p>ca-fetcher.ximg.app · part of the <a href="https://ximg.app">ximg.app</a> stack</p>
+</div>
+
+<script>
+  function copyCmd(btn) {
+    const pre = btn.closest('.cmd-block').querySelector('pre');
+    const text = pre.innerText;
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = 'copied!';
+      btn.classList.add('copied');
+      setTimeout(() => { btn.textContent = 'copy'; btn.classList.remove('copied'); }, 1800);
+    });
+  }
+</script>
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

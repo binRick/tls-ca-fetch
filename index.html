@@ -1,0 +1,454 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CA Certificate Fetcher</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>">
+  <style>
+    :root {
+      --bg: #0a0d14;
+      --surface: #111827;
+      --surface2: #1a2235;
+      --border: #1f2937;
+      --accent: #10b981;
+      --accent2: #6366f1;
+      --text: #f1f5f9;
+      --muted: #6b7280;
+      --code-bg: #060910;
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      padding-top: 48px;
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    #subnav {
+      position: sticky;
+      top: 52px;
+      z-index: 150;
+      background: rgba(10,13,20,.97);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,.07);
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: .2rem;
+      padding: .4rem 1rem;
+    }
+    #subnav a {
+      font-size: .72rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: #4b5563;
+      padding: .3rem .65rem;
+      border-radius: 3px;
+      text-decoration: none;
+      transition: color .2s, background .2s;
+      font-family: 'Courier New', monospace;
+    }
+    #subnav a:hover, #subnav a.active {
+      color: #10b981;
+      background: rgba(255,255,255,.06);
+    }
+
+    .container {
+      max-width: 960px;
+      margin: 0 auto;
+      padding: 0 1.5rem;
+    }
+
+    /* Hero */
+    .hero {
+      padding: 5rem 1.5rem 4rem;
+      text-align: center;
+    }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      background: rgba(16,185,129,.1);
+      border: 1px solid rgba(16,185,129,.25);
+      color: var(--accent);
+      font-family: 'Courier New', monospace;
+      font-size: .75rem;
+      letter-spacing: .1em;
+      padding: .3rem .85rem;
+      border-radius: 2rem;
+      margin-bottom: 1.75rem;
+    }
+    .hero-badge::before {
+      content: '';
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      background: var(--accent);
+      border-radius: 50%;
+    }
+
+    .hero h1 {
+      font-size: clamp(2rem, 6vw, 3.5rem);
+      font-weight: 700;
+      letter-spacing: -.02em;
+      line-height: 1.15;
+      margin-bottom: 1.25rem;
+      background: linear-gradient(135deg, var(--text) 0%, #94a3b8 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-subtitle {
+      font-size: 1.125rem;
+      color: var(--muted);
+      max-width: 580px;
+      margin: 0 auto 2.5rem;
+      line-height: 1.7;
+    }
+
+    .cta-row {
+      display: flex;
+      gap: 1rem;
+      justify-content: center;
+      flex-wrap: wrap;
+      margin-top: 2.5rem;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .5rem;
+      padding: .75rem 1.75rem;
+      border-radius: 6px;
+      font-size: .9rem;
+      font-weight: 600;
+      letter-spacing: .03em;
+      text-decoration: none;
+      transition: all .2s;
+      cursor: pointer;
+      border: none;
+    }
+    .btn-primary {
+      background: var(--accent);
+      color: #0a0d14;
+    }
+    .btn-primary:hover {
+      background: #0da271;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 20px rgba(16,185,129,.35);
+    }
+    .btn-secondary {
+      background: transparent;
+      color: var(--text);
+      border: 1px solid var(--border);
+    }
+    .btn-secondary:hover {
+      border-color: var(--accent2);
+      color: var(--accent2);
+      transform: translateY(-1px);
+    }
+
+    /* Feature cards */
+    .features {
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    .section-label {
+      text-align: center;
+      font-size: .72rem;
+      letter-spacing: .18em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-family: 'Courier New', monospace;
+      margin-bottom: 2.5rem;
+    }
+
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.25rem;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.75rem;
+      transition: border-color .2s, transform .2s;
+    }
+    .card:hover {
+      border-color: rgba(16,185,129,.3);
+      transform: translateY(-2px);
+    }
+
+    .card-icon {
+      font-size: 1.75rem;
+      margin-bottom: 1rem;
+    }
+    .card h3 {
+      font-size: 1rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: .6rem;
+    }
+    .card p {
+      font-size: .875rem;
+      color: var(--muted);
+      line-height: 1.65;
+    }
+
+    /* Code sections */
+    .code-section {
+      padding: 2rem 1.5rem 4rem;
+    }
+
+    .section-heading {
+      font-size: 1.35rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: .5rem;
+    }
+    .section-desc {
+      color: var(--muted);
+      font-size: .9rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .code-block {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      max-width: 960px;
+      margin: 0 auto 2.5rem;
+    }
+
+    .code-block-header {
+      background: rgba(255,255,255,.03);
+      border-bottom: 1px solid var(--border);
+      padding: .6rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .code-block-header span {
+      font-size: .72rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-family: 'Courier New', monospace;
+    }
+    .dot { width: 10px; height: 10px; border-radius: 50%; }
+    .dot-red   { background: #ff5f57; }
+    .dot-yel   { background: #febc2e; }
+    .dot-grn   { background: #28c840; }
+
+    .code-block pre {
+      padding: 1.25rem 1.5rem;
+      font-family: 'Courier New', monospace;
+      font-size: .82rem;
+      line-height: 1.7;
+      color: #a3e6cb;
+      overflow-x: auto;
+      white-space: pre;
+    }
+
+    /* Comment lines in code */
+    .code-block pre .cm { color: #4b5563; }
+
+    /* Terminal output block */
+    .terminal {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      max-width: 960px;
+      margin: 0 auto;
+      font-family: 'Courier New', monospace;
+      font-size: .82rem;
+    }
+    .terminal-header {
+      background: rgba(255,255,255,.03);
+      border-bottom: 1px solid var(--border);
+      padding: .6rem 1rem;
+      display: flex;
+      align-items: center;
+      gap: .5rem;
+    }
+    .terminal-header .title {
+      font-size: .72rem;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-family: 'Courier New', monospace;
+      flex: 1;
+      text-align: center;
+    }
+    .terminal pre {
+      padding: 1.25rem 1.5rem;
+      line-height: 1.7;
+      overflow-x: auto;
+      white-space: pre;
+      color: #d1fae5;
+    }
+    .t-arrow  { color: var(--accent); }
+    .t-rule   { color: #1f2937; }
+    .t-label  { color: #6366f1; font-weight: 600; }
+    .t-dim    { color: #4b5563; }
+    .t-meta   { color: #94a3b8; }
+    .t-ok     { color: var(--accent); font-weight: 600; }
+    .t-leaf   { color: #10b981; }
+    .t-int    { color: #818cf8; }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem 1.5rem;
+      text-align: center;
+      color: var(--muted);
+      font-size: .8rem;
+    }
+  </style>
+</head>
+<body>
+
+<nav id="subnav">
+  <a href="index.html">Overview</a>
+  <a href="how-it-works.html">How It Works</a>
+  <a href="download.html">Download</a>
+  <a href="run.html">Run</a>
+  <a href="openssl.html">OpenSSL</a>
+</nav>
+<script>
+  document.querySelectorAll('#subnav a').forEach(function(a){
+    var href=a.getAttribute('href'), path=location.pathname;
+    if(path.endsWith(href)||(href==='index.html'&&(path.endsWith('/')||path.endsWith('/ca-fetcher')||path.endsWith('index.html')))){a.classList.add('active');}
+  });
+</script>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="hero-badge">Go · Stdlib Only · v1.0.0</div>
+  <h1>CA Certificate Fetcher</h1>
+  <p class="hero-subtitle">
+    Extract CA certificates from any TLS server. One command, zero dependencies, cross-platform binary.
+  </p>
+
+  <div class="cta-row">
+    <a href="download.html" class="btn btn-primary">
+      ↓ Download Binary
+    </a>
+    <a href="run.html" class="btn btn-secondary">
+      ▶ Run on This Server
+    </a>
+  </div>
+</section>
+
+<!-- Feature cards -->
+<section class="features">
+  <div class="section-label">Why tls-ca-fetch</div>
+  <div class="cards-grid">
+    <div class="card">
+      <div class="card-icon">⚙️</div>
+      <h3>Zero Dependencies</h3>
+      <p>Pure Go stdlib — no OpenSSL, no Python, no brew installs. Drop the single static binary anywhere and run it. Works on Linux, macOS, and Windows without any runtime or shared library.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🔗</div>
+      <h3>Full Chain Inspection</h3>
+      <p>Shows every certificate in the TLS chain: the leaf (server cert), any intermediate CAs, and the root CA if it's present. Each cert's role, issuer, expiry, and AIA URL are printed at a glance.</p>
+    </div>
+    <div class="card">
+      <div class="card-icon">🌐</div>
+      <h3>AIA Root Fetch</h3>
+      <p>Servers almost never send the root CA — it's assumed to be in your OS trust store. With <code style="font-family:'Courier New',monospace;color:var(--accent);font-size:.8em;">-fetch-root</code>, tls-ca-fetch follows the AIA extension URL to download the root automatically.</p>
+    </div>
+  </div>
+</section>
+
+<!-- Usage code block -->
+<section class="code-section">
+  <div style="max-width:960px;margin:0 auto;">
+    <div class="section-heading">Quick Usage</div>
+    <p class="section-desc">Drop the binary on your PATH and point it at any host.</p>
+  </div>
+  <div class="code-block">
+    <div class="code-block-header">
+      <div class="dot dot-red"></div>
+      <div class="dot dot-yel"></div>
+      <div class="dot dot-grn"></div>
+      <span>shell</span>
+    </div>
+    <pre><span class="cm"># Basic — saves google.com-ca.pem</span>
+tls-ca-fetch google.com
+
+<span class="cm"># Custom port</span>
+tls-ca-fetch example.com 8443
+
+<span class="cm"># Fetch root CA via AIA URL</span>
+tls-ca-fetch -fetch-root example.com
+
+<span class="cm"># Private / self-signed server</span>
+tls-ca-fetch -insecure internal.corp 8443
+
+<span class="cm"># Save full chain (leaf + CAs)</span>
+tls-ca-fetch -all example.com</pre>
+  </div>
+</section>
+
+<!-- Terminal output -->
+<section class="code-section" style="padding-top:0;">
+  <div style="max-width:960px;margin:0 auto;">
+    <div class="section-heading">Example Output</div>
+    <p class="section-desc">Running against google.com — shows the full chain with roles identified automatically.</p>
+  </div>
+  <div class="terminal">
+    <div class="terminal-header">
+      <div class="dot dot-red"></div>
+      <div class="dot dot-yel"></div>
+      <div class="dot dot-grn"></div>
+      <span class="title">terminal — tls-ca-fetch google.com</span>
+    </div>
+    <pre><span class="t-arrow">→</span> Connecting to google.com:443 …
+
+Chain received: <span class="t-meta">3 certificate(s)</span>
+<span class="t-rule">──────────────────────────────────────────────────────────────────────</span>
+  [0] <span class="t-leaf">leaf            </span> CN=*.google.com                        <span class="t-dim">IsCA=false</span>
+       <span class="t-dim">Issuer :</span> WR2
+       <span class="t-dim">Expires:</span> 2026-06-22
+       <span class="t-dim">AIA    :</span> http://i.pki.goog/wr2.crt
+
+  [1] <span class="t-int">intermediate CA </span> CN=WR2                                 <span class="t-dim">IsCA=true</span>
+       <span class="t-dim">Issuer :</span> GTS Root R1
+       <span class="t-dim">Expires:</span> 2029-02-20
+
+  [2] <span class="t-int">intermediate CA </span> CN=GTS Root R1                         <span class="t-dim">IsCA=true</span>
+       <span class="t-dim">Issuer :</span> GlobalSign Root CA
+       <span class="t-dim">Expires:</span> 2028-01-28
+<span class="t-rule">──────────────────────────────────────────────────────────────────────</span>
+
+<span class="t-ok">✓ Saved 2 CA certificates → google.com-ca.pem</span>
+  Verified: 2 PEM block(s) readable in output file</pre>
+  </div>
+
+  <div class="cta-row" style="margin-top:3rem;">
+    <a href="download.html" class="btn btn-primary">↓ Download Binary</a>
+    <a href="run.html" class="btn btn-secondary">▶ Run on This Server</a>
+  </div>
+</section>
+
+<footer>
+  <p>tls-ca-fetch &mdash; pure Go, zero dependencies &mdash; <a href="how-it-works.html" style="color:var(--accent);text-decoration:none;">How It Works →</a></p>
+</footer>
+
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>

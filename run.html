@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Run · CA Certificate Fetcher</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🔐</text></svg>">
+  <style>
+    :root {
+      --bg: #0a0d14;
+      --surface: #111827;
+      --surface2: #1a2235;
+      --border: #1f2937;
+      --accent: #10b981;
+      --accent2: #6366f1;
+      --text: #f1f5f9;
+      --muted: #6b7280;
+      --code-bg: #060910;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: system-ui, -apple-system, sans-serif;
+      padding-top: 48px;
+      min-height: 100vh;
+      line-height: 1.6;
+    }
+
+    /* Subnav */
+    #subnav {
+      position: sticky;
+      top: 52px;
+      z-index: 150;
+      background: rgba(10,13,20,.97);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid rgba(255,255,255,.07);
+      display: flex;
+      justify-content: center;
+      flex-wrap: wrap;
+      gap: .2rem;
+      padding: .4rem 1rem;
+    }
+    #subnav a {
+      font-size: .72rem;
+      letter-spacing: .12em;
+      text-transform: uppercase;
+      color: #4b5563;
+      padding: .3rem .65rem;
+      border-radius: 3px;
+      text-decoration: none;
+      transition: color .2s, background .2s;
+      font-family: 'Courier New', monospace;
+    }
+    #subnav a:hover, #subnav a.active {
+      color: #10b981;
+      background: rgba(255,255,255,.06);
+    }
+
+    /* Layout */
+    .container {
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 3rem 1.5rem 5rem;
+    }
+
+    /* Page header */
+    .page-header {
+      margin-bottom: 1.8rem;
+    }
+    .page-header h1 {
+      font-size: 2rem;
+      font-weight: 700;
+      color: var(--text);
+      letter-spacing: -.02em;
+      margin-bottom: .5rem;
+    }
+    .page-header p {
+      color: var(--muted);
+      font-size: 1rem;
+      max-width: 60ch;
+    }
+
+    /* Warning banner */
+    .warning-banner {
+      display: flex;
+      align-items: flex-start;
+      gap: .85rem;
+      background: rgba(245,158,11,.07);
+      border: 1px solid rgba(245,158,11,.3);
+      border-radius: 8px;
+      padding: .9rem 1.1rem;
+      margin-bottom: 2rem;
+      font-size: .85rem;
+      color: #fcd34d;
+      line-height: 1.5;
+    }
+    .warning-banner .warn-icon {
+      font-size: 1rem;
+      flex-shrink: 0;
+      margin-top: .05em;
+    }
+
+    /* Form card */
+    .form-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+    }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 140px;
+      gap: 1.2rem;
+      margin-bottom: 1.4rem;
+    }
+    @media (max-width: 520px) {
+      .form-row { grid-template-columns: 1fr; }
+    }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: .45rem;
+    }
+    .form-group label {
+      font-size: .75rem;
+      font-weight: 600;
+      letter-spacing: .1em;
+      text-transform: uppercase;
+      color: var(--muted);
+      font-family: 'Courier New', monospace;
+    }
+    .form-group input[type="text"],
+    .form-group input[type="number"] {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      color: var(--text);
+      font-size: .95rem;
+      font-family: 'Courier New', monospace;
+      padding: .65rem .9rem;
+      outline: none;
+      transition: border-color .2s, box-shadow .2s;
+      width: 100%;
+    }
+    .form-group input[type="text"]:focus,
+    .form-group input[type="number"]:focus {
+      border-color: rgba(16,185,129,.5);
+      box-shadow: 0 0 0 3px rgba(16,185,129,.08);
+    }
+    .form-group input::placeholder {
+      color: #374151;
+    }
+
+    /* Checkboxes */
+    .checkbox-row {
+      display: flex;
+      flex-direction: column;
+      gap: .85rem;
+      margin-bottom: 1.6rem;
+    }
+    .checkbox-item {
+      display: flex;
+      align-items: flex-start;
+      gap: .75rem;
+      cursor: pointer;
+    }
+    .checkbox-item input[type="checkbox"] {
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      flex-shrink: 0;
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: .15em;
+      position: relative;
+      transition: background .15s, border-color .15s;
+    }
+    .checkbox-item input[type="checkbox"]:checked {
+      background: var(--accent);
+      border-color: var(--accent);
+    }
+    .checkbox-item input[type="checkbox"]:checked::after {
+      content: '';
+      position: absolute;
+      left: 4px;
+      top: 1px;
+      width: 6px;
+      height: 10px;
+      border: 2px solid #000;
+      border-top: none;
+      border-left: none;
+      transform: rotate(45deg);
+    }
+    .checkbox-item input[type="checkbox"]:focus {
+      outline: 2px solid rgba(16,185,129,.4);
+      outline-offset: 2px;
+    }
+    .checkbox-label {
+      display: flex;
+      flex-direction: column;
+      gap: .15rem;
+    }
+    .checkbox-label strong {
+      font-size: .88rem;
+      color: var(--text);
+      font-weight: 600;
+    }
+    .checkbox-label span {
+      font-size: .78rem;
+      color: var(--muted);
+    }
+
+    /* Submit button */
+    .submit-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: .65rem;
+      width: 100%;
+      background: var(--accent);
+      color: #000;
+      font-weight: 700;
+      font-size: .95rem;
+      letter-spacing: .03em;
+      border: none;
+      border-radius: 8px;
+      padding: .8rem 1.5rem;
+      cursor: pointer;
+      transition: background .2s, opacity .2s, transform .1s;
+      font-family: system-ui, sans-serif;
+    }
+    .submit-btn:hover:not(:disabled) {
+      background: #0ea972;
+    }
+    .submit-btn:active:not(:disabled) {
+      transform: scale(.99);
+    }
+    .submit-btn:disabled {
+      opacity: .7;
+      cursor: not-allowed;
+    }
+
+    /* Spinner */
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+    .spinner {
+      display: none;
+      width: 16px;
+      height: 16px;
+      border: 2px solid rgba(0,0,0,.3);
+      border-top-color: #000;
+      border-radius: 50%;
+      animation: spin .7s linear infinite;
+    }
+    .submit-btn.loading .spinner { display: block; }
+    .submit-btn.loading .btn-text { opacity: .7; }
+
+    /* Output area */
+    #output-area {
+      display: none;
+      margin-bottom: 2rem;
+    }
+
+    .status-bar {
+      display: flex;
+      align-items: center;
+      gap: .7rem;
+      padding: .7rem 1rem;
+      border-radius: 8px 8px 0 0;
+      font-size: .85rem;
+      font-family: 'Courier New', monospace;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      border-bottom: none;
+    }
+    .status-bar.success {
+      background: rgba(16,185,129,.08);
+      border-color: rgba(16,185,129,.3);
+      color: var(--accent);
+    }
+    .status-bar.failure {
+      background: rgba(239,68,68,.08);
+      border-color: rgba(239,68,68,.3);
+      color: #f87171;
+    }
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+    .status-bar.success .status-dot { background: var(--accent); }
+    .status-bar.failure .status-dot { background: #f87171; }
+
+    /* Terminal box */
+    .terminal-box {
+      background: var(--code-bg);
+      border: 1px solid var(--border);
+      border-top: none;
+      border-radius: 0 0 8px 8px;
+      padding: 1rem 1.2rem;
+      font-family: 'Courier New', monospace;
+      font-size: .8rem;
+      color: #6ee7b7;
+      line-height: 1.65;
+      max-height: 320px;
+      overflow-y: auto;
+      position: relative;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+    .terminal-box .stderr-line { color: #f87171; }
+    .terminal-box .info-line { color: #60a5fa; }
+
+    /* Loading cursor animation */
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+    .terminal-cursor {
+      display: inline-block;
+      width: 8px;
+      height: 13px;
+      background: var(--accent);
+      vertical-align: text-bottom;
+      animation: blink .8s step-start infinite;
+      margin-left: 2px;
+    }
+
+    /* PEM section */
+    .pem-section {
+      margin-top: 1.2rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+    .pem-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: .65rem 1rem;
+      background: rgba(16,185,129,.06);
+      border-bottom: 1px solid rgba(16,185,129,.15);
+    }
+    .pem-header-label {
+      font-size: .72rem;
+      font-family: 'Courier New', monospace;
+      color: var(--accent);
+      letter-spacing: .1em;
+      text-transform: uppercase;
+    }
+    .download-pem-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: .45rem;
+      background: var(--accent);
+      color: #000;
+      font-size: .75rem;
+      font-weight: 700;
+      font-family: 'Courier New', monospace;
+      letter-spacing: .06em;
+      border: none;
+      border-radius: 5px;
+      padding: .35rem .85rem;
+      cursor: pointer;
+      transition: background .2s;
+      text-decoration: none;
+    }
+    .download-pem-btn:hover { background: #0ea972; }
+    .pem-content {
+      padding: 1rem 1.2rem;
+      font-family: 'Courier New', monospace;
+      font-size: .75rem;
+      color: #a5f3c8;
+      line-height: 1.6;
+      max-height: 240px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    /* AIA warning */
+    .aia-warning {
+      margin-top: 1.2rem;
+      display: flex;
+      align-items: flex-start;
+      gap: .85rem;
+      background: rgba(245,158,11,.07);
+      border: 1px solid rgba(245,158,11,.25);
+      border-radius: 8px;
+      padding: .9rem 1.1rem;
+      font-size: .83rem;
+      color: #fcd34d;
+      line-height: 1.6;
+    }
+    .aia-warning .aia-icon { flex-shrink: 0; }
+    .aia-warning .aia-url {
+      font-family: 'Courier New', monospace;
+      font-size: .75rem;
+      color: #fbbf24;
+      word-break: break-all;
+      display: block;
+      margin-top: .3rem;
+    }
+
+    /* How it works section */
+    .how-section {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 1.5rem 1.8rem;
+      margin-top: 2.5rem;
+    }
+    .how-section h3 {
+      font-size: .85rem;
+      font-weight: 600;
+      color: var(--text);
+      letter-spacing: .05em;
+      margin-bottom: 1.2rem;
+    }
+    .how-steps {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: .85rem;
+    }
+    .how-steps li {
+      display: flex;
+      align-items: flex-start;
+      gap: .9rem;
+      font-size: .85rem;
+      color: var(--muted);
+      line-height: 1.5;
+    }
+    .step-num {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 22px;
+      height: 22px;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      border-radius: 50%;
+      font-size: .68rem;
+      font-family: 'Courier New', monospace;
+      color: var(--accent);
+      flex-shrink: 0;
+      margin-top: .05em;
+      font-weight: 700;
+    }
+    .how-steps li strong {
+      color: var(--text);
+    }
+
+    @media (max-width: 600px) {
+      .page-header h1 { font-size: 1.5rem; }
+      .form-card { padding: 1.3rem; }
+    }
+  </style>
+</head>
+<body>
+
+<nav id="subnav">
+  <a href="index.html">Overview</a>
+  <a href="how-it-works.html">How It Works</a>
+  <a href="download.html">Download</a>
+  <a href="run.html">Run</a>
+  <a href="openssl.html">OpenSSL</a>
+</nav>
+<script>
+  document.querySelectorAll('#subnav a').forEach(function(a){
+    var href=a.getAttribute('href'), path=location.pathname;
+    if(path.endsWith(href)||(href==='index.html'&&(path.endsWith('/')||path.endsWith('/ca-fetcher')||path.endsWith('index.html')))){a.classList.add('active');}
+  });
+</script>
+
+<div class="container">
+
+  <div class="page-header">
+    <h1>Run on This Server</h1>
+    <p>Execute tls-ca-fetch against any public TLS server. The binary runs server-side; the PEM is returned to your browser.</p>
+  </div>
+
+  <div class="warning-banner">
+    <span class="warn-icon">⚠</span>
+    <span>Only connect to public servers you own or have permission to inspect. Rate limited to 10 requests/minute.</span>
+  </div>
+
+  <div class="form-card">
+    <form id="run-form" autocomplete="off">
+
+      <div class="form-row">
+        <div class="form-group">
+          <label for="hostname">Hostname</label>
+          <input type="text" id="hostname" name="hostname" placeholder="e.g. google.com or internal.corp" required spellcheck="false">
+        </div>
+        <div class="form-group">
+          <label for="port">Port</label>
+          <input type="number" id="port" name="port" value="443" min="1" max="65535" required>
+        </div>
+      </div>
+
+      <div class="checkbox-row">
+        <label class="checkbox-item">
+          <input type="checkbox" id="fetchRoot" name="fetchRoot">
+          <div class="checkbox-label">
+            <strong>Fetch root CA via AIA</strong>
+            <span>Follow AIA URL to download root CA if server doesn't send it</span>
+          </div>
+        </label>
+        <label class="checkbox-item">
+          <input type="checkbox" id="insecure" name="insecure">
+          <div class="checkbox-label">
+            <strong>Skip TLS verification</strong>
+            <span>For private CAs and self-signed certs</span>
+          </div>
+        </label>
+      </div>
+
+      <button type="submit" class="submit-btn" id="submit-btn">
+        <div class="spinner" id="spinner"></div>
+        <span class="btn-text" id="btn-text">Run tls-ca-fetch →</span>
+      </button>
+
+    </form>
+  </div>
+
+  <!-- Output area (hidden until run) -->
+  <div id="output-area">
+
+    <div class="status-bar" id="status-bar">
+      <div class="status-dot"></div>
+      <span id="status-text"></span>
+    </div>
+    <div class="terminal-box" id="terminal-output"></div>
+
+    <!-- PEM section (shown on success) -->
+    <div class="pem-section" id="pem-section" style="display:none">
+      <div class="pem-header">
+        <span class="pem-header-label">CA Certificate (PEM)</span>
+        <button class="download-pem-btn" id="download-pem-btn">↓ Download .pem</button>
+      </div>
+      <div class="pem-content" id="pem-content"></div>
+    </div>
+
+    <!-- AIA warning (shown when no PEM but AIA URL found) -->
+    <div class="aia-warning" id="aia-warning" style="display:none">
+      <span class="aia-icon">ℹ</span>
+      <div>
+        <strong>Server sent only a leaf certificate — no CA bundle returned.</strong>
+        <span>Try enabling "Fetch root CA via AIA" and running again. AIA URL detected:</span>
+        <span class="aia-url" id="aia-url"></span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- How it works -->
+  <div class="how-section">
+    <h3>What happens when you click Run?</h3>
+    <ol class="how-steps">
+      <li>
+        <span class="step-num">1</span>
+        <span>Your browser sends the <strong>hostname + port</strong> to this server over HTTPS.</span>
+      </li>
+      <li>
+        <span class="step-num">2</span>
+        <span>The server runs the <strong>tls-ca-fetch binary</strong> (Linux amd64) against the target host, capturing full stdout and stderr.</span>
+      </li>
+      <li>
+        <span class="step-num">3</span>
+        <span>The <strong>full output and PEM file</strong> (if a CA cert was found) are returned to your browser in the response.</span>
+      </li>
+      <li>
+        <span class="step-num">4</span>
+        <span><strong>Nothing is stored server-side.</strong> No logs, no certificates, no request history.</span>
+      </li>
+    </ol>
+  </div>
+
+</div>
+
+<script>
+(function () {
+  var form = document.getElementById('run-form');
+  var submitBtn = document.getElementById('submit-btn');
+  var btnText = document.getElementById('btn-text');
+  var spinner = document.getElementById('spinner');
+  var outputArea = document.getElementById('output-area');
+  var statusBar = document.getElementById('status-bar');
+  var statusText = document.getElementById('status-text');
+  var terminalOutput = document.getElementById('terminal-output');
+  var pemSection = document.getElementById('pem-section');
+  var pemContent = document.getElementById('pem-content');
+  var downloadPemBtn = document.getElementById('download-pem-btn');
+  var aiaWarning = document.getElementById('aia-warning');
+  var aiaUrl = document.getElementById('aia-url');
+
+  var currentPem = '';
+  var currentHostname = '';
+
+  function setLoading(on) {
+    submitBtn.disabled = on;
+    if (on) {
+      submitBtn.classList.add('loading');
+      btnText.textContent = 'Running…';
+      spinner.style.display = 'block';
+    } else {
+      submitBtn.classList.remove('loading');
+      btnText.textContent = 'Run tls-ca-fetch →';
+      spinner.style.display = 'none';
+    }
+  }
+
+  function showLoadingTerminal(host, port) {
+    outputArea.style.display = 'block';
+    statusBar.className = 'status-bar';
+    statusText.textContent = 'Running against ' + host + ':' + port + '…';
+    terminalOutput.innerHTML = '$ tls-ca-fetch ' + escapeHtml(host) + ':' + escapeHtml(String(port)) + '\n<span class="terminal-cursor"></span>';
+    pemSection.style.display = 'none';
+    aiaWarning.style.display = 'none';
+    outputArea.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  function renderTerminal(output) {
+    if (!output) return '';
+    var lines = output.split('\n');
+    return lines.map(function(line) {
+      if (/^(error|Error|ERR|failed|Failed)/i.test(line.trim())) {
+        return '<span class="stderr-line">' + escapeHtml(line) + '</span>';
+      } else if (/^(AIA|Fetching|Connecting|Subject|Issuer|Not Before|Not After)/i.test(line.trim())) {
+        return '<span class="info-line">' + escapeHtml(line) + '</span>';
+      }
+      return escapeHtml(line);
+    }).join('\n');
+  }
+
+  function extractAiaUrl(output) {
+    var match = output && output.match(/AIA[:\s]+([https://][^\s]+)/i);
+    if (!match) match = output && output.match(/(https?:\/\/[^\s]+\.cer[^\s]*)/i);
+    if (!match) match = output && output.match(/(https?:\/\/[^\s]+\.crt[^\s]*)/i);
+    return match ? match[1] : null;
+  }
+
+  form.addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    var hostname = document.getElementById('hostname').value.trim();
+    var port = parseInt(document.getElementById('port').value, 10);
+    var fetchRoot = document.getElementById('fetchRoot').checked;
+    var insecure = document.getElementById('insecure').checked;
+
+    if (!hostname) {
+      document.getElementById('hostname').focus();
+      return;
+    }
+    if (!port || port < 1 || port > 65535) {
+      document.getElementById('port').focus();
+      return;
+    }
+
+    currentHostname = hostname;
+    setLoading(true);
+    showLoadingTerminal(hostname, port);
+
+    fetch('/api/run', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ hostname: hostname, port: port, fetchRoot: fetchRoot, insecure: insecure })
+    })
+    .then(function(res) {
+      return res.json().then(function(data) {
+        return { ok: res.ok, status: res.status, data: data };
+      });
+    })
+    .then(function(result) {
+      setLoading(false);
+      var data = result.data;
+      var success = result.ok && data && !data.error && (data.pem || data.success);
+
+      // Status bar
+      statusBar.className = 'status-bar ' + (success ? 'success' : 'failure');
+      statusText.textContent = (success ? '✓ Success' : '✗ Failed') + ' — ' + hostname + ':' + port;
+
+      // Terminal output
+      var rawOutput = (data && (data.output || data.stdout || data.stderr || data.message)) || '';
+      if (!rawOutput && data && data.error) rawOutput = data.error;
+      terminalOutput.innerHTML = '$ tls-ca-fetch ' + escapeHtml(hostname) + ':' + escapeHtml(String(port)) + '\n' + renderTerminal(rawOutput);
+
+      currentPem = '';
+
+      if (success && data.pem) {
+        currentPem = data.pem;
+        pemContent.textContent = data.pem;
+        pemSection.style.display = 'block';
+        aiaWarning.style.display = 'none';
+      } else if (!success || !data.pem) {
+        pemSection.style.display = 'none';
+        var foundAia = extractAiaUrl(rawOutput);
+        if (foundAia) {
+          aiaUrl.textContent = foundAia;
+          aiaWarning.style.display = 'flex';
+        } else {
+          aiaWarning.style.display = 'none';
+        }
+      }
+    })
+    .catch(function(err) {
+      setLoading(false);
+      statusBar.className = 'status-bar failure';
+      statusText.textContent = '✗ Network error — ' + hostname + ':' + port;
+      terminalOutput.innerHTML = '$ tls-ca-fetch ' + escapeHtml(hostname) + ':' + escapeHtml(String(port)) + '\n<span class="stderr-line">' + escapeHtml('Error: ' + (err.message || 'Failed to reach server')) + '</span>';
+      pemSection.style.display = 'none';
+      aiaWarning.style.display = 'none';
+    });
+  });
+
+  downloadPemBtn.addEventListener('click', function() {
+    if (!currentPem) return;
+    var filename = (currentHostname || 'ca') + '-ca.pem';
+    var blob = new Blob([currentPem], { type: 'application/x-pem-file' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function() {
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    }, 100);
+  });
+})();
+</script>
+
+<script src="/shared/nav.js?v=2"></script>
+</body>
+</html>
