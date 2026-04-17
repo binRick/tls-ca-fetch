@@ -1,41 +1,47 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-GO="${GO:-}"
-if [ -z "${GO}" ]; then
-  if command -v go &>/dev/null; then
-    GO="go"
-  elif [ -x /usr/local/go/bin/go ]; then
-    GO="/usr/local/go/bin/go"
-  else
-    echo "error: go not found. Install Go from https://go.dev/dl/ or set GO=/path/to/go" >&2
-    exit 1
-  fi
-fi
-
 VERSION="${VERSION:-v1.0.0}"
 BIN="tls-ca-fetch"
 OUT="releases/${VERSION}"
-LDFLAGS="-s -w"
+GO_IMAGE="${GO_IMAGE:-golang:1.22-alpine}"
+
+if ! command -v docker &>/dev/null; then
+  echo "error: docker not found" >&2
+  exit 1
+fi
 
 mkdir -p "${OUT}"
 
-build() {
-  local goos="$1" goarch="$2" suffix="${3:-}"
-  local target="${OUT}/${BIN}-${goos}-${goarch}${suffix}"
-  echo "  building ${target} ..."
-  CGO_ENABLED=0 GOOS="${goos}" GOARCH="${goarch}" \
-    "${GO}" build -ldflags="${LDFLAGS}" -trimpath -o "${target}" .
-}
-
-echo "tls-ca-fetch build — ${VERSION}"
+echo "tls-ca-fetch build — ${VERSION} (via ${GO_IMAGE})"
 echo
 
-build linux   amd64
-build linux   arm64
-build darwin  amd64
-build darwin  arm64
-build windows amd64 .exe
+# Build all targets inside a single container run.
+# Source is mounted read-only at /src; output dir is mounted read-write at /out.
+docker run --rm \
+  -v "$(pwd):/src:ro" \
+  -v "$(pwd)/${OUT}:/out" \
+  -e BIN="${BIN}" \
+  -e LDFLAGS="-s -w" \
+  "${GO_IMAGE}" \
+  sh -c '
+    set -e
+    cd /src
+    for target in \
+      "linux   amd64  " \
+      "linux   arm64  " \
+      "darwin  amd64  " \
+      "darwin  arm64  " \
+      "windows amd64 .exe"
+    do
+      set -- $target
+      goos="$1" goarch="$2" suffix="${3:-}"
+      out="/out/${BIN}-${goos}-${goarch}${suffix}"
+      echo "  building ${out##*/} ..."
+      CGO_ENABLED=0 GOOS="$goos" GOARCH="$goarch" \
+        go build -ldflags="$LDFLAGS" -trimpath -o "$out" .
+    done
+  '
 
 echo
 echo "done — output in ${OUT}/"
