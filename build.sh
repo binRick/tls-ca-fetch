@@ -16,7 +16,6 @@ mkdir -p "${OUT}"
 echo "tls-ca-fetch build — ${VERSION} (via ${GO_IMAGE})"
 echo
 
-# Build all targets inside a single container run.
 # Source is mounted read-only at /src; output dir is mounted read-write at /out.
 docker run --rm \
   -v "$(pwd):/src:ro" \
