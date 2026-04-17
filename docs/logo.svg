@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#1e1b4b"/>
+      <stop offset="100%" stop-color="#0d1117"/>
+    </radialGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#3b82f6" stop-opacity="0.28"/>
+      <stop offset="100%" stop-color="#3b82f6" stop-opacity="0"/>
+    </radialGradient>
+    <filter id="blur"><feGaussianBlur stdDeviation="3"/></filter>
+    <filter id="blur2"><feGaussianBlur stdDeviation="1.5"/></filter>
+  </defs>
+
+  <!-- outer ring -->
+  <circle cx="100" cy="100" r="96" fill="url(#bg)" stroke="#3b82f6" stroke-width="1.2" stroke-opacity="0.4"/>
+
+  <!-- glow backdrop -->
+  <circle cx="100" cy="97" r="72" fill="url(#glow)" filter="url(#blur)"/>
+
+  <!-- shield outer -->
+  <path d="M100,34 L144,53 L144,97 C144,126 125,147 100,157 C75,147 56,126 56,97 L56,53 Z"
+        fill="rgba(59,130,246,0.07)" stroke="#3b82f6" stroke-width="2" stroke-linejoin="round" stroke-opacity="0.85"/>
+
+  <!-- shield inner bevel -->
+  <path d="M100,41 L138,58 L138,97 C138,122 121,141 100,150 C79,141 62,122 62,97 L62,58 Z"
+        fill="none" stroke="#818cf8" stroke-width="0.8" stroke-opacity="0.3" stroke-linejoin="round"/>
+
+  <!-- lock shackle -->
+  <path d="M88,90 L88,81 C88,73.3 112,73.3 112,81 L112,90"
+        fill="none" stroke="#60a5fa" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- lock body -->
+  <rect x="83" y="89" width="34" height="26" rx="4" fill="rgba(96,165,250,0.12)" stroke="#60a5fa" stroke-width="1.8"/>
+
+  <!-- lock glow -->
+  <rect x="83" y="89" width="34" height="26" rx="4" fill="rgba(96,165,250,0.1)" filter="url(#blur2)"/>
+
+  <!-- keyhole -->
+  <circle cx="100" cy="100" r="3.5" fill="#93c5fd"/>
+  <rect x="98.5" y="100" width="3" height="8" rx="1.5" fill="#93c5fd"/>
+
+  <!-- certificate chain — vertical line down from shield tip -->
+  <line x1="100" y1="157" x2="100" y2="165" stroke="#3b82f6" stroke-width="1.8" stroke-opacity="0.7"/>
+
+  <!-- root CA node (bottom center) -->
+  <circle cx="100" cy="170" r="6" fill="#1d4ed8" stroke="#60a5fa" stroke-width="1.2"/>
+  <circle cx="100" cy="170" r="2.5" fill="#bfdbfe"/>
+
+  <!-- intermediate CA nodes (sides) -->
+  <line x1="94" y1="170" x2="72" y2="180" stroke="#818cf8" stroke-width="1.3" stroke-opacity="0.6" stroke-dasharray="3 2"/>
+  <line x1="106" y1="170" x2="128" y2="180" stroke="#818cf8" stroke-width="1.3" stroke-opacity="0.6" stroke-dasharray="3 2"/>
+
+  <circle cx="68" cy="182" r="5" fill="#312e81" stroke="#818cf8" stroke-width="1.2"/>
+  <circle cx="68" cy="182" r="2" fill="#c7d2fe"/>
+  <circle cx="132" cy="182" r="5" fill="#312e81" stroke="#818cf8" stroke-width="1.2"/>
+  <circle cx="132" cy="182" r="2" fill="#c7d2fe"/>
+
+  <!-- top connection nodes (TLS handshake dots) -->
+  <line x1="66" y1="48" x2="88" y2="53" stroke="#60a5fa" stroke-width="0.9" stroke-opacity="0.45"/>
+  <line x1="134" y1="48" x2="112" y2="53" stroke="#60a5fa" stroke-width="0.9" stroke-opacity="0.45"/>
+  <circle cx="63" cy="47" r="4" fill="#1e40af" stroke="#60a5fa" stroke-width="1.1"/>
+  <circle cx="63" cy="47" r="1.6" fill="#bfdbfe"/>
+  <circle cx="137" cy="47" r="4" fill="#1e40af" stroke="#60a5fa" stroke-width="1.1"/>
+  <circle cx="137" cy="47" r="1.6" fill="#bfdbfe"/>
+
+  <!-- animated pulse ring -->
+  <circle cx="100" cy="97" r="12" fill="none" stroke="#3b82f6" stroke-width="1.5" stroke-opacity="0.55">
+    <animate attributeName="r"       from="10"  to="32"  dur="2.8s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" from="0.55" to="0"  dur="2.8s" repeatCount="indefinite"/>
+  </circle>
+  <circle cx="100" cy="97" r="12" fill="none" stroke="#3b82f6" stroke-width="1" stroke-opacity="0.3">
+    <animate attributeName="r"       from="10"  to="50"  dur="2.8s" begin="0.9s" repeatCount="indefinite"/>
+    <animate attributeName="opacity" from="0.3"  to="0"  dur="2.8s" begin="0.9s" repeatCount="indefinite"/>
+  </circle>
+</svg>
